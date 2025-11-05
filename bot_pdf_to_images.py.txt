@@ -1,0 +1,33 @@
+import os
+from telegram import Update
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
+from pdf2image import convert_from_path
+
+TOKEN = os.getenv("8519723178:AAFxKyy5Udo0pBGsnzEvq1_hJ-M6_19_E-w")
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("👋 أرسل لي ملف PDF وسأحوّله إلى صور.")
+
+async def handle_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    file = await update.message.document.get_file()
+    pdf_path = "temp.pdf"
+    await file.download_to_drive(pdf_path)
+    await update.message.reply_text("📄 جارٍ التحويل...")
+
+    os.makedirs("pdf_images", exist_ok=True)
+    pages = convert_from_path(pdf_path, dpi=200)
+
+    for i, page in enumerate(pages, start=1):
+        img_path = f"pdf_images/page_{i}.jpg"
+        page.save(img_path, "JPEG")
+        await update.message.reply_photo(photo=open(img_path, "rb"))
+
+    os.remove(pdf_path)
+    await update.message.reply_text("✅ تم التحويل بنجاح!")
+
+if name == "main":
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.Document.PDF, handle_pdf))
+    print("🚀 البوت يعمل الآن...")
+    app.run_polling()
